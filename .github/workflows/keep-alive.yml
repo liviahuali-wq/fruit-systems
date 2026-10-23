@@ -15,11 +15,15 @@ jobs:
   ping:
     name: Health check
     runs-on: ubuntu-latest
+    # No deployment environment here: production's approval rule would hold every ping.
     strategy:
       fail-fast: false
       matrix:
-        environment: [staging, production]
-    environment: ${{ matrix.environment }}
+        include:
+          - environment: staging
+            url: ${{ vars.STAGING_URL }}
+          - environment: production
+            url: ${{ vars.PRODUCTION_URL }}
     steps:
       - uses: actions/checkout@v7
-      - run: scripts/smoke-test.sh "${{ vars.APP_URL }}" "${{ matrix.environment }}"
+      - run: scripts/smoke-test.sh "${{ matrix.url }}" "${{ matrix.environment }}"
