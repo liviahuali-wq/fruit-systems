@@ -1,0 +1,51 @@
+# Automatic checks. Runs on every pull request, and again before every release.
+# Any failure blocks the merge (main is protected) and stops the release.
+name: Checks
+
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: App checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Type check
+        run: pnpm typecheck
+      - name: Unit tests
+        run: pnpm test
+      - name: Dependency scan (high and critical)
+        run: pnpm audit --prod --audit-level high
+      - name: Build
+        run: pnpm build
+
+  database:
+    name: Database checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.121.0
+      # A fresh, throwaway database: every migration must apply cleanly from the start.
+      - name: Apply migrations and seed data
+        run: supabase db start
+      - name: Database tests, including tenant isolation
+        run: supabase test db

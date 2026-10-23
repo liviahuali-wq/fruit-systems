@@ -1,0 +1,51 @@
+# A private preview link for each pull request, built against staging data.
+# Preview links need a Vercel sign-in to open, so only the project owner can see them.
+name: Preview
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    name: Preview link
+    # Pull requests from forks get no secrets, so they get no preview.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_STAGING_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Deploy preview
+        id: deploy
+        run: |
+          pnpm dlx vercel@65.1.0 pull --yes --environment=preview --token="${{ secrets.VERCEL_TOKEN }}"
+          pnpm dlx vercel@65.1.0 build --token="${{ secrets.VERCEL_TOKEN }}"
+          url=$(pnpm dlx vercel@65.1.0 deploy --prebuilt --token="${{ secrets.VERCEL_TOKEN }}")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Post the link on the pull request
+        uses: actions/github-script@v9
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.url }}
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `Preview (staging data, Vercel sign-in needed): ${process.env.PREVIEW_URL}`,
+            });

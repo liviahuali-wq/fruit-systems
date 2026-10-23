@@ -1,0 +1,25 @@
+# Daily health check of staging and production. Each check queries the database,
+# so free-tier Supabase projects are never paused for inactivity (risk R12).
+# A failed run emails the repository owner.
+name: Keep-alive
+
+on:
+  schedule:
+    - cron: "0 20 * * *" # 6 or 7 am Sydney time, depending on daylight saving
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    name: Health check
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [staging, production]
+    environment: ${{ matrix.environment }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: scripts/smoke-test.sh "${{ vars.APP_URL }}" "${{ matrix.environment }}"
