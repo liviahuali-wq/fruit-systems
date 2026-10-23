@@ -4,4 +4,5 @@
 
 insert into public.tenant (id, name, plan, status) values
   ('00000000-0000-4000-8000-000000000001', 'Sunridge Orchards', 'large_grower', 'active'),
-  ('00000000-0000-4000-8000-000000000002', 'Bluegum Test Growers', 'starter', 'trial');
+  ('00000000-0000-4000-8000-000000000002', 'Bluegum Test Growers', 'starter', 'trial')
+on conflict (id) do nothing; -- staging reloads this file on every release

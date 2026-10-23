@@ -1,0 +1,96 @@
+# The release path from the Solution Design (Operations):
+# checks -> staging (database changes, isolation and smoke tests) -> approval -> production.
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One release at a time; a newer push waits rather than cancelling a release half way.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+
+  staging:
+    name: Staging
+    needs: checks
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ vars.APP_URL }}
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.121.0
+
+      - name: Database changes
+        run: |
+          supabase link --project-ref "${{ vars.SUPABASE_PROJECT_REF }}" --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
+          supabase db push --include-seed --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
+      - name: Tenant isolation tests on staging
+        run: supabase test db --linked
+
+      - name: Deploy app
+        run: |
+          pnpm dlx vercel@65.1.0 pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
+          pnpm dlx vercel@65.1.0 build --prod --token="${{ secrets.VERCEL_TOKEN }}"
+          pnpm dlx vercel@65.1.0 deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}"
+      - name: Smoke tests
+        run: scripts/smoke-test.sh "${{ vars.APP_URL }}" staging
+
+  production:
+    name: Production
+    needs: staging
+    runs-on: ubuntu-latest
+    # The production environment requires Livia's approval before this job starts.
+    environment:
+      name: production
+      url: ${{ vars.APP_URL }}
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.121.0
+
+      # No seed here: production holds the polished demo data, loaded separately (task 5.x).
+      - name: Database changes
+        run: |
+          supabase link --project-ref "${{ vars.SUPABASE_PROJECT_REF }}" --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
+          supabase db push --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
+
+      - name: Deploy app
+        run: |
+          pnpm dlx vercel@65.1.0 pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
+          pnpm dlx vercel@65.1.0 build --prod --token="${{ secrets.VERCEL_TOKEN }}"
+          pnpm dlx vercel@65.1.0 deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}"
+      - name: Smoke tests
+        run: scripts/smoke-test.sh "${{ vars.APP_URL }}" production
