@@ -2,6 +2,13 @@
 -- The release is blocked unless every check passes (Solution Design, Security).
 begin;
 create extension if not exists pgtap with schema extensions;
+-- Hosted projects may already have pgtap in another schema; find its functions wherever it is.
+select set_config(
+  'search_path',
+  (select extnamespace::regnamespace::text from pg_extension where extname = 'pgtap')
+    || ', public, extensions',
+  true
+);
 
 select plan(6);
 
