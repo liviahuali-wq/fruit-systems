@@ -1,14 +1,11 @@
 -- Tenant isolation checks, run with `supabase test db` locally and on every pull request.
 -- The release is blocked unless every check passes (Solution Design, Security).
 begin;
+-- On hosted projects the CLI signs in as a temporary role that cannot see the extensions
+-- schema, so run as postgres (the role is a member). Locally this is already postgres.
+set local role postgres;
 create extension if not exists pgtap with schema extensions;
--- Hosted projects may already have pgtap in another schema; find its functions wherever it is.
-select set_config(
-  'search_path',
-  (select extnamespace::regnamespace::text from pg_extension where extname = 'pgtap')
-    || ', public, extensions',
-  true
-);
+set local search_path = extensions, public;
 
 select plan(6);
 
@@ -29,7 +26,7 @@ select is_empty(
   $$ select id from public.tenant $$,
   'anonymous visitors see no tenants'
 );
-reset role;
+set local role postgres;
 
 -- 3. A signed-in user with no tenant in their token sees nothing.
 set local role authenticated;
@@ -50,7 +47,7 @@ select results_eq(
 -- 5. A Bluegum user cannot change Sunridge, even by asking for it by ID.
 update public.tenant set name = 'Taken over'
  where id = '00000000-0000-4000-8000-000000000001';
-reset role;
+set local role postgres;
 select is(
   (select name from public.tenant where id = '00000000-0000-4000-8000-000000000001'),
   'Sunridge Orchards',
@@ -64,7 +61,7 @@ select is(
   'ok',
   'the health check answers without signing in'
 );
-reset role;
+set local role postgres;
 
 select * from finish();
 rollback;
