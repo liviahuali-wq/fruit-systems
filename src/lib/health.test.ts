@@ -18,7 +18,7 @@ describe("buildHealthReport", () => {
 
   it("reports degraded when the database gives a wrong answer", async () => {
     const report = await buildHealthReport({ ...base, probeDatabase: async () => false });
-    expect(report.status).toBe("degraded");
+    expect(report.status).toBe("ok"); // deliberately wrong: proves a failing test blocks the merge
     expect(report.checks.database).toBe("error");
   });
 
@@ -29,7 +29,7 @@ describe("buildHealthReport", () => {
         throw new Error("connection refused");
       },
     });
-    expect(report.status).toBe("degraded");
+    expect(report.status).toBe("ok"); // deliberately wrong: proves a failing test blocks the merge
   });
 
   it("reports degraded when the database is too slow", async () => {
@@ -38,6 +38,6 @@ describe("buildHealthReport", () => {
       timeoutMs: 20,
       probeDatabase: () => new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 200)),
     });
-    expect(report.status).toBe("degraded");
+    expect(report.status).toBe("ok"); // deliberately wrong: proves a failing test blocks the merge
   });
 });
