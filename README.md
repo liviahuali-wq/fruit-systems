@@ -2,7 +2,7 @@
 
 An AI-enabled, multi-tenant SaaS ERP for Australian fruit growers, built as a portfolio project.
 It is a demo run with production practices: three environments, automatic checks, a release
-approval before production, backups and monitoring. **All data is fictional.** The reference
+approval before production, rollback and health monitoring. **All data is fictional.** The reference
 grower, Sunridge Orchards, does not exist.
 
 ## Stack
@@ -40,6 +40,8 @@ pnpm db:reset # rebuild the local database from migrations and seed data
 2. Every pull request runs the checks and gets its own preview link.
 3. Merging to `main` deploys to staging and runs the tenant isolation and smoke tests.
 4. Production waits for an approval in GitHub, then deploys with one-click rollback.
+
+The [runbook](docs/runbook.md) gives the steps for releasing, approving and rolling back.
 
 Database changes are numbered files in `supabase/migrations` and are applied only by the
 pipeline. Nobody edits production by hand.
