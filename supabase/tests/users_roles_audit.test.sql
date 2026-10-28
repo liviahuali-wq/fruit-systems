@@ -7,7 +7,7 @@ set local role postgres;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(18);
+select plan(21);
 
 -- Test people, removed again by the rollback at the end. Fixed IDs:
 --   a1 Sunridge administrator   a2 Sunridge sales administrator   a3 Sunridge leaver
@@ -205,6 +205,39 @@ select throws_ok(
   'P0001',
   'audit_event is append-only: update is not allowed',
   'the audit trail cannot be changed or removed'
+);
+
+-- Leavers --------------------------------------------------------------------------------------
+
+-- 18. A leaver whose token has not expired yet still sees nothing.
+set local role authenticated;
+set local request.jwt.claims to '{"sub": "a3000000-0000-4000-8000-000000000003", "role": "authenticated", "aal": "aal2", "tenant_id": "00000000-0000-4000-8000-000000000001"}';
+select is_empty(
+  $$ select id from public.tenant union all select id from public.app_user $$,
+  'a deactivated person sees nothing, even with a token that is still valid'
+);
+
+-- 19. Server code acting for an administrator is named in the trail through updated_by.
+set local role postgres;
+set local request.jwt.claims to '{}';
+update public.app_user
+   set status = 'deactivated', deactivated_at = now(), updated_by = 'a1000000-0000-4000-8000-000000000001'
+ where id = 'a2000000-0000-4000-8000-000000000002';
+select results_eq(
+  $$ select actor_id::text, after ->> 'status' from public.audit_event
+      where table_name = 'app_user' and row_id = 'a2000000-0000-4000-8000-000000000002' and action = 'update' $$,
+  $$ values ('a1000000-0000-4000-8000-000000000001', 'deactivated') $$,
+  'a change made by server code names the administrator it acted for'
+);
+
+-- 20. Deactivating someone in the trail does not let them back: their next token has no tenant.
+select is(
+  private.custom_access_token_hook(jsonb_build_object(
+    'user_id', 'a2000000-0000-4000-8000-000000000002',
+    'claims', jsonb_build_object('sub', 'a2000000-0000-4000-8000-000000000002', 'role', 'authenticated')
+  )) -> 'claims' ->> 'tenant_id',
+  null,
+  'a newly deactivated person gets no tenant in their next token'
 );
 
 select * from finish();

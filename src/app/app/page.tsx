@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { signOut } from "@/app/auth-actions";
 import { requireUser } from "@/lib/auth";
+import { holds } from "@/lib/permissions";
+import Link from "next/link";
 
 export const metadata: Metadata = { title: "Home · Fruit Systems" };
 
@@ -33,6 +35,12 @@ async function Welcome() {
           </button>
         </form>
       </div>
+      {user.profile && holds(user.profile.permissions, "users", "approve") && (
+        <nav className="flex gap-4 text-sm">
+          <Link href="/app/admin/users" className="underline">People and roles</Link>
+          <Link href="/app/admin/audit" className="underline">Audit trail</Link>
+        </nav>
+      )}
       {user.profile ? (
         <dl className="grid grid-cols-[8rem_1fr] gap-y-2 rounded-xl border border-zinc-200 bg-white p-6 text-sm dark:border-zinc-800 dark:bg-zinc-950">
           <dt className="text-zinc-500">Email</dt>
