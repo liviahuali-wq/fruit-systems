@@ -6,3 +6,8 @@ insert into public.tenant (id, name, plan, status) values
   ('00000000-0000-4000-8000-000000000001', 'Sunridge Orchards', 'large_grower', 'active'),
   ('00000000-0000-4000-8000-000000000002', 'Bluegum Test Growers', 'starter', 'trial')
 on conflict (id) do nothing; -- staging reloads this file on every release
+
+-- The ten standard roles for each demo tenant. Demo people are created by a script, not here,
+-- because this file is public and also loads into staging.
+select private.create_standard_roles('00000000-0000-4000-8000-000000000001');
+select private.create_standard_roles('00000000-0000-4000-8000-000000000002');

@@ -7,7 +7,7 @@ set local role postgres;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(6);
+select plan(7);
 
 -- 1. Every table in the public schema has row-level security switched on.
 select is_empty(
@@ -36,8 +36,14 @@ select is_empty(
   'a user without a tenant sees no tenants'
 );
 
--- 4. A Bluegum user sees only Bluegum.
-set local request.jwt.claims to '{"sub": "22222222-2222-4222-8222-222222222222", "role": "authenticated", "tenant_id": "00000000-0000-4000-8000-000000000002"}';
+-- 4. A Bluegum user sees nothing before the second factor, and only Bluegum after it.
+set local request.jwt.claims to '{"sub": "22222222-2222-4222-8222-222222222222", "role": "authenticated", "aal": "aal1", "tenant_id": "00000000-0000-4000-8000-000000000002"}';
+select is_empty(
+  $$ select id from public.tenant $$,
+  'a Bluegum user who has not passed the second factor sees no tenants'
+);
+
+set local request.jwt.claims to '{"sub": "22222222-2222-4222-8222-222222222222", "role": "authenticated", "aal": "aal2", "tenant_id": "00000000-0000-4000-8000-000000000002"}';
 select results_eq(
   $$ select name from public.tenant $$,
   $$ values ('Bluegum Test Growers'::text) $$,
