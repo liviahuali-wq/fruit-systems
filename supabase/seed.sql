@@ -1,13 +1,10 @@
--- Fictional demo data. Loaded by `supabase db reset` locally and by the staging reload script.
+-- Fictional demo data. Loaded by `supabase db reset` locally, and once into a new staging database:
+-- hosted projects never re-run a changed seed file, so reference data belongs in migrations.
 -- Fixed IDs so tests can refer to each tenant. No real business or person appears here.
 -- ABNs are left empty on purpose: a made-up 11-digit number could belong to a real business.
 
 insert into public.tenant (id, name, plan, status) values
   ('00000000-0000-4000-8000-000000000001', 'Sunridge Orchards', 'large_grower', 'active'),
   ('00000000-0000-4000-8000-000000000002', 'Bluegum Test Growers', 'starter', 'trial')
-on conflict (id) do nothing; -- staging reloads this file on every release
+on conflict (id) do nothing;
 
--- The ten standard roles for each demo tenant. Demo people are created by a script, not here,
--- because this file is public and also loads into staging.
-select private.create_standard_roles('00000000-0000-4000-8000-000000000001');
-select private.create_standard_roles('00000000-0000-4000-8000-000000000002');
