@@ -11,7 +11,7 @@ including someone new to the project. Proven end to end on 26 October 2026 (task
 | Health check | `/api/health` on the site above | `/api/health` on the site above |
 | Vercel project | fruit-systems-staging | fruit-systems |
 | Supabase project | fruit-systems-staging (Sydney) | fruit-systems-prod (Sydney) |
-| Data | Fictional seed data; a release adds missing seed rows but never overwrites edits | No seed data |
+| Data | Fictional seed data, loaded once when the database was new | No seed data |
 
 Releases run in GitHub: **Actions → Release**. Keys and passwords live only in GitHub and Vercel
 settings, never in the repository or in chat.
@@ -35,7 +35,7 @@ on GitHub to see whether a site is up to date.
 3. Merge the pull request (squash). The branch is deleted automatically.
 4. The **Release** run starts by itself:
    - checks again on `main`;
-   - **Staging**: applies database changes and any missing seed data, runs the tenant isolation tests,
+   - **Staging**: applies database changes, runs the tenant isolation tests,
      deploys, then runs the smoke tests against the new version;
    - **Production** waits for approval.
 5. Approve production (next section). Production applies database changes (no seed data),
@@ -102,6 +102,9 @@ This puts `main` back in step with what should run, and the change passes every 
   staging or production tables by hand.
 - Migrations only move forward. To undo one, write a new migration that reverses it, and release
   it like any change.
+- Hosted projects run `supabase/seed.sql` only once, when the database is new; a later change to
+  the file is recorded but never run. Anything every environment needs, such as the standard
+  roles, goes in a migration. The seed file holds fictional demo data only.
 - Prefer changes that only add (new tables, new nullable columns). Remove or rename in a later
   release, once no running version uses the old shape. This keeps Instant Rollback safe.
 

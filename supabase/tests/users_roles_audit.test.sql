@@ -7,7 +7,7 @@ set local role postgres;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(17);
+select plan(18);
 
 -- Test people, removed again by the rollback at the end. Fixed IDs:
 --   a1 Sunridge administrator   a2 Sunridge sales administrator   a3 Sunridge leaver
@@ -39,9 +39,19 @@ join public.role r on r.tenant_id = u.tenant_id and r.key = wanted.role_key;
 
 -- 1. Each demo tenant starts with the ten standard roles.
 select results_eq(
-  $$ select tenant_id::text, count(*)::int from public.role where is_standard group by tenant_id order by tenant_id $$,
+  $$ select tenant_id::text, count(*)::int from public.role
+      where is_standard and tenant_id in ('00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002')
+      group by tenant_id order by tenant_id $$,
   $$ values ('00000000-0000-4000-8000-000000000001', 10), ('00000000-0000-4000-8000-000000000002', 10) $$,
   'each demo tenant has the ten standard roles'
+);
+
+-- 1b. A new tenant gets the ten standard roles as soon as it is created.
+insert into public.tenant (id, name) values ('00000000-0000-4000-8000-0000000000ff', 'New Test Grower');
+select is(
+  (select count(*)::int from public.role where tenant_id = '00000000-0000-4000-8000-0000000000ff' and is_standard),
+  10,
+  'a new tenant gets the ten standard roles'
 );
 
 -- 2. A role cannot hold a permission that does not exist.
