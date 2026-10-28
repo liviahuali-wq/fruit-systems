@@ -1,0 +1,31 @@
+# Creates the demo people on staging and invites the demo administrator (D-14, task 4.2d).
+# Run by hand from Actions > Demo people > Run workflow. Safe to run again.
+# Staging only: the secrets live in the staging environment, and the script refuses production.
+name: Demo people
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  people:
+    name: Create demo people on staging
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Create demo people
+        run: pnpm demo:people
+        env:
+          SUPABASE_URL: https://${{ vars.SUPABASE_PROJECT_REF }}.supabase.co
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          DEMO_ADMIN_EMAIL: ${{ secrets.DEMO_ADMIN_EMAIL }}
+          SITE_URL: ${{ vars.APP_URL }}

@@ -108,6 +108,39 @@ This puts `main` back in step with what should run, and the change passes every 
 - Prefer changes that only add (new tables, new nullable columns). Remove or rename in a later
   release, once no running version uses the old shape. This keeps Instant Rollback safe.
 
+## Demo people (staging)
+
+The fictional growers' staff are created by `scripts/demo-people.mjs` (D-14). Run it from
+**Actions → Demo people → Run workflow**; it is safe to run again.
+
+- Fictional people (for example Priya Nair, Sales manager at Sunridge) get accounts on
+  `@*.example` addresses with no password. They appear in lists and on records; nobody can sign
+  in as them.
+- The address in the staging secret `DEMO_ADMIN_EMAIL` gets a real invitation as Sunridge's
+  tenant administrator. The free Supabase email service delivers only to the project's own team,
+  so this must be a Supabase team member's address.
+- It needs the staging environment secrets `SUPABASE_SECRET_KEY` and `DEMO_ADMIN_EMAIL`, and
+  refuses to run against production.
+- Locally: `pnpm db:reset`, then `pnpm demo:people` with `SUPABASE_URL`, `SUPABASE_SECRET_KEY`,
+  `SITE_URL=http://localhost:3000` and any `DEMO_ADMIN_EMAIL`; the invitation lands in the local
+  inbox at http://127.0.0.1:54324.
+
+## Sign-in settings on hosted projects
+
+Supabase keeps some sign-in settings in the dashboard, not in the repository. Each hosted project
+needs, under **Authentication**:
+
+| Setting | Value |
+|---|---|
+| Hooks → Customize Access Token | Postgres, `private.custom_access_token_hook` |
+| Email → Minimum password length | 12 |
+| Multi-Factor → TOTP | Enabled |
+| URL Configuration → Site URL | the project's web address |
+| URL Configuration → Redirect URLs | the web address + `/auth/confirm` |
+| Emails → Invite user | the link in `supabase/templates/invite.html` |
+
+Vercel needs `SUPABASE_SECRET_KEY` (Sensitive) in each project for adding and deactivating people.
+
 ## Backups
 
 The Supabase free plan has **no automatic backups**: Supabase backs up Pro, Team and Enterprise
