@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { IDLE_COOKIE } from "@/lib/idle";
+import { createAdminSupabase } from "@/lib/supabase/admin";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export interface FormState {
@@ -86,6 +87,32 @@ export async function verifyCode(_: FormState, formData: FormData): Promise<Form
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
   if (error) return { error: "That code did not match. Try the newest code in the app." };
   redirect("/app");
+}
+
+// Accepting an invitation: choose a password, become active, then set up the authenticator app.
+export async function setPassword(_: FormState, formData: FormData): Promise<FormState> {
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 12) return { error: "Use at least 12 characters." };
+  if (password !== String(formData.get("confirm") ?? "")) return { error: "The two passwords do not match." };
+
+  const supabase = await createServerSupabase();
+  const { data } = await supabase.auth.getClaims();
+  if (!data?.claims) redirect("/sign-in?reason=link");
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    return error.code === "weak_password"
+      ? { error: "That password is too easy to guess. Try a longer one." }
+      : { error: "Could not save the password. Try again." };
+  }
+
+  // Only an invited person becomes active here; a deactivated one stays deactivated.
+  await createAdminSupabase()
+    .from("app_user")
+    .update({ status: "active", updated_by: data.claims.sub })
+    .eq("id", data.claims.sub)
+    .eq("status", "invited");
+  redirect("/mfa/setup");
 }
 
 export async function signOut() {

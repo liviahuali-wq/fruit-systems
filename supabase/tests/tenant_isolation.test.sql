@@ -9,6 +9,12 @@ set local search_path = extensions, public;
 
 select plan(7);
 
+-- The Bluegum test user needs a sign-in account and an active profile; removed by the rollback.
+insert into auth.users (id, instance_id, aud, role, email) values
+  ('22222222-2222-4222-8222-222222222222', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'tester@bluegum.test');
+insert into public.app_user (id, tenant_id, full_name, email) values
+  ('22222222-2222-4222-8222-222222222222', '00000000-0000-4000-8000-000000000002', 'Bluegum Tester', 'tester@bluegum.test');
+
 -- 1. Every table in the public schema has row-level security switched on.
 select is_empty(
   $$ select c.relname
