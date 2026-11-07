@@ -117,8 +117,8 @@ The fictional growers' staff are created by `scripts/demo-people.mjs` (D-14). Ru
   `@*.example` addresses with no password. They appear in lists and on records; nobody can sign
   in as them.
 - The address in the staging secret `DEMO_ADMIN_EMAIL` gets a real invitation as Sunridge's
-  tenant administrator. The free Supabase email service delivers only to the project's own team,
-  so this must be a Supabase team member's address.
+  tenant administrator. Staging sends email through Brevo (D-16), so any address works, though
+  mail may land in spam. If the invitation is lost or expired, the script does not send another.
 - It needs the staging environment secrets `SUPABASE_SECRET_KEY` and `DEMO_ADMIN_EMAIL`, and
   refuses to run against production.
 - Locally: `pnpm db:reset`, then `pnpm demo:people` with `SUPABASE_URL`, `SUPABASE_SECRET_KEY`,
@@ -137,9 +137,16 @@ needs, under **Authentication**:
 | Multi-Factor → TOTP | Enabled |
 | URL Configuration → Site URL | the project's web address |
 | URL Configuration → Redirect URLs | the web address + `/auth/confirm` |
-| Emails → Invite user | the link in `supabase/templates/invite.html` |
+| Emails → SMTP Settings | Custom SMTP: `smtp-relay.brevo.com`, port 587, the Brevo SMTP login and key |
+| Emails → Invite user | the subject and body in `supabase/templates/invite.html` |
 
-Vercel needs `SUPABASE_SECRET_KEY` (Sensitive) in each project for adding and deactivating people.
+Set up custom SMTP first: Supabase locks the invite template without it, and the default template's
+link does not work with `/auth/confirm`. The Brevo sender is a Gmail address, which is acceptable for
+the demo only; a real domain is needed before go-live (D-14, D-16). Keep the SMTP key out of the
+repository and use a separate key for each project.
+
+Vercel needs `SUPABASE_SECRET_KEY` as a Secret in each project's Production environment, for adding
+and deactivating people. Leaving it out of Preview means preview links cannot do either.
 
 ## Backups
 

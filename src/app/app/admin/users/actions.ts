@@ -36,7 +36,7 @@ export async function invitePerson(_: FormState, formData: FormData): Promise<Fo
   });
   if (error || !invited.user) {
     if (error?.code === "email_exists") return { error: "Someone with this email already has an account." };
-    // The free email service only reaches the project's own team (D-14).
+    // Without custom SMTP, Supabase's email only reaches the project's own team (D-14, D-16).
     return { error: "The invitation email could not be sent. On the demo, people are added by script; see the runbook." };
   }
 

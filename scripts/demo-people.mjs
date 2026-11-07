@@ -4,7 +4,7 @@
 // - Fictional people get sign-in accounts without passwords on @*.example addresses, which never
 //   receive mail, so they appear in lists and on records but nobody can sign in as them.
 // - DEMO_ADMIN_EMAIL gets a real invitation as Sunridge's tenant administrator, so a person can
-//   sign in to staging. Supabase's free email reaches only the project's own team.
+//   sign in to staging. Staging sends email through Brevo (D-16).
 //
 // Runs locally (`pnpm demo:people` with .env.local values) and on staging through the
 // "Demo people" workflow. Never on production. Logs never print the invited address,
