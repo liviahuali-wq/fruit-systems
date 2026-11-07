@@ -108,6 +108,46 @@ This puts `main` back in step with what should run, and the change passes every 
 - Prefer changes that only add (new tables, new nullable columns). Remove or rename in a later
   release, once no running version uses the old shape. This keeps Instant Rollback safe.
 
+## Demo people (staging)
+
+The fictional growers' staff are created by `scripts/demo-people.mjs` (D-14). Run it from
+**Actions → Demo people → Run workflow**; it is safe to run again.
+
+- Fictional people (for example Priya Nair, Sales manager at Sunridge) get accounts on
+  `@*.example` addresses with no password. They appear in lists and on records; nobody can sign
+  in as them.
+- The address in the staging secret `DEMO_ADMIN_EMAIL` gets a real invitation as Sunridge's
+  tenant administrator. Staging sends email through Brevo (D-16), so any address works, though
+  mail may land in spam. If the invitation is lost or expired, the script does not send another.
+- It needs the staging environment secrets `SUPABASE_SECRET_KEY` and `DEMO_ADMIN_EMAIL`, and
+  refuses to run against production.
+- Locally: `pnpm db:reset`, then `pnpm demo:people` with `SUPABASE_URL`, `SUPABASE_SECRET_KEY`,
+  `SITE_URL=http://localhost:3000` and any `DEMO_ADMIN_EMAIL`; the invitation lands in the local
+  inbox at http://127.0.0.1:54324.
+
+## Sign-in settings on hosted projects
+
+Supabase keeps some sign-in settings in the dashboard, not in the repository. Each hosted project
+needs, under **Authentication**:
+
+| Setting | Value |
+|---|---|
+| Hooks → Customize Access Token | Postgres, `private.custom_access_token_hook` |
+| Email → Minimum password length | 12 |
+| Multi-Factor → TOTP | Enabled |
+| URL Configuration → Site URL | the project's web address |
+| URL Configuration → Redirect URLs | the web address + `/auth/confirm` |
+| Emails → SMTP Settings | Custom SMTP: `smtp-relay.brevo.com`, port 587, the Brevo SMTP login and key |
+| Emails → Invite user | the subject and body in `supabase/templates/invite.html` |
+
+Set up custom SMTP first: Supabase locks the invite template without it, and the default template's
+link does not work with `/auth/confirm`. The Brevo sender is a Gmail address, which is acceptable for
+the demo only; a real domain is needed before go-live (D-14, D-16). Keep the SMTP key out of the
+repository and use a separate key for each project.
+
+Vercel needs `SUPABASE_SECRET_KEY` as a Secret in each project's Production environment, for adding
+and deactivating people. Leaving it out of Preview means preview links cannot do either.
+
 ## Backups
 
 The Supabase free plan has **no automatic backups**: Supabase backs up Pro, Team and Enterprise
