@@ -44,6 +44,19 @@ on GitHub to see whether a site is up to date.
 If staging fails, production is skipped and nothing changes for users. Read the failed step's
 log, fix it in a new pull request, and the next merge releases again.
 
+## Release again without a code change
+
+Vercel gives a new setting (for example a key under **Settings → Environment Variables**) only to
+new deployments. Our deployments are built in GitHub ("prebuilt"), so Vercel's own **Redeploy**
+button is locked. Instead:
+
+1. In GitHub, open **Actions → Release** and click **Run workflow**, keeping the branch `main`.
+2. The run checks, deploys the same version to staging, then waits for approval.
+3. Approve production as below. The footer version stays the same; the deployment is new.
+
+In Vercel's **Deployments** list, the live production deployment is the one with the filled blue
+**Production** badge.
+
 ## Approve production
 
 1. Open the waiting run: **Actions → Release →** the newest run, or the link in GitHub's email.
@@ -146,7 +159,8 @@ the demo only; a real domain is needed before go-live (D-14, D-16). Keep the SMT
 repository and use a separate key for each project.
 
 Vercel needs `SUPABASE_SECRET_KEY` as a Secret in each project's Production environment, for adding
-and deactivating people. Leaving it out of Preview means preview links cannot do either.
+and deactivating people. Leaving it out of Preview means preview links cannot do either. After
+adding or changing it, release again (see "Release again without a code change").
 
 ## Backups
 
@@ -162,6 +176,7 @@ or schedule regular exports with `supabase db dump`, kept off-site.
 
 | Symptom | First step |
 |---|---|
+| **Database checks** failed with `port 54322 ... address already in use` | A problem on GitHub's machine, not our code. Run the release again; it gets a fresh machine. |
 | Release failed at **Staging** | Read the failed step's log. Production was not touched. Fix through a pull request. |
 | Production broken after a release | Instant Rollback, then revert or fix through a pull request. |
 | `/api/health` shows `"database":"error"` | Check the project in the Supabase dashboard (paused, or an outage). |
